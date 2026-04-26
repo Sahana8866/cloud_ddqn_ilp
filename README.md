@@ -46,11 +46,11 @@ This project proposes a hybrid DDQN + ILP offloading agent that combines the ada
 
 ### Algorithm 1 — Hybrid Offloading (DDQN + ILP)
 
-![a1.png]
+!(a1.png)
 
 ### Algorithm 2 — Federated Learning (FedProx)
 
-![a2.png]
+!(a2.png)
 
 ---
 
