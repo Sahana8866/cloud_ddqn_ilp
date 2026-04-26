@@ -46,32 +46,11 @@ This project proposes a hybrid DDQN + ILP offloading agent that combines the ada
 
 ### Algorithm 1 — Hybrid Offloading (DDQN + ILP)
 
-```
-Input:  Edge nodes E = {e1, ..., e19}, Current metrics Mt
-Output: Selected edge node e_selected
-
-1. Collect system state St from all edge nodes
-2. [DDQN] Compute Q-values: Q(St, ei) = DDQN_forward(St, ei)
-3. [DDQN] Select top-k candidates: C = topk(Q)
-4. [ILP]  Minimize: sum of (w1 * latency_i + w2 * energy_i) for ei in C
-          Subject to: CPU_i <= CPU_max, MEM_i <= MEM_max
-5. Solve ILP and return e_selected
-```
+![a1.png]
 
 ### Algorithm 2 — Federated Learning (FedProx)
 
-```
-Input:  Global model Wt, Edge clients C, Local datasets Di
-Output: Updated global model Wt+1
-
-For each edge client ci in C:
-  1. Download global model Wt
-  2. Train locally: Wi_t+1 = Train(Wt, Di)
-  3. Compute update: delta_Wi = Wi_t+1 - Wt
-
-Aggregate: Wt+1 = Wt + (1 / |C|) * sum(delta_Wi)
-Return Wt+1
-```
+![a2.png]
 
 ---
 
