@@ -18,27 +18,87 @@ This project proposes a hybrid DDQN + ILP offloading agent that combines the ada
 
 ## System Architecture
 
-```
-End Devices (Laptops)
-       |
-       |  (i) Offloading Request
-       v
-Cloud Core (Controller VM)
-  |-- Hybrid DDQN + ILP Agent   <-- (ii) Collect Metrics from Edge VMs
-  |-- FL Server (Aggregator)
-       |
-       |  (iii) Offloading Decision
-       v
-Edge Layer (19 Heterogeneous VMs)
-  |-- Edge Server 1 (FL Client)
-  |-- Edge Server 2 (FL Client)
-  |-- ...
-  |-- Edge Server 19 (FL Client)
-       |
-       |  (vi) Send model updates to FL Server
-       v
-    Aggregated Global Model
-```
+┌─────────────────────────────────────────────────────────────────────────────┐
+│                           DEVICE LAYER                                       │
+│  ┌─────────┐  ┌─────────┐  ┌─────────┐  ┌─────────┐  ┌─────────┐           │
+│  │Device 1 │  │Device 2 │  │Device 3 │  │Device 4 │  │Device 5 │           │
+│  │(Laptop) │  │(Laptop) │  │(Laptop) │  │(Laptop) │  │(Laptop) │           │
+│  └────┬────┘  └────┬────┘  └────┬────┘  └────┬────┘  └────┬────┘           │
+│       │            │            │            │            │                 │
+│       └────────────┴────────────┼────────────┴────────────┘                 │
+│                                 │                                            │
+│                          Offloading Requests                                 │
+│                                 │                                            │
+└─────────────────────────────────┼───────────────────────────────────────────┘
+                                  │
+                                  ▼
+┌─────────────────────────────────────────────────────────────────────────────┐
+│                            CLOUD LAYER                                       │
+│                      (1 VM - 16GB RAM, 12 Cores)                           │
+│  ┌─────────────────────────────────────────────────────────────────────┐    │
+│  │                        CLOUD CONTROLLER                               │    │
+│  │  ┌───────────────────┐      ┌───────────────────┐                   │    │
+│  │  │  DDQN Agent       │      │  FL Server        │                   │    │
+│  │  │  - Computes       │      │  - Federated      │                   │    │
+│  │  │    Q-values       │      │    Averaging      │                   │    │
+│  │  │  - Selects top-k  │      │  - Global model   │                   │    │
+│  │  │    candidates     │      │    distribution   │                   │    │
+│  │  └────────┬──────────┘      └────────┬──────────┘                   │    │
+│  │           │                          │                               │    │
+│  │           ▼                          ▼                               │    │
+│  │  ┌───────────────────┐      ┌───────────────────┐                   │    │
+│  │  │  ILP Solver       │◄────►│  Metrics Collector│                   │    │
+│  │  │  - Constraint     │      │  - CPU, Memory,   │                   │    │
+│  │  │    satisfaction   │      │    Bandwidth      │                   │    │
+│  │  │  - Optimal edge   │      │  - From 19 edges  │                   │    │
+│  │  │    selection      │      │                   │                   │    │
+│  │  └───────────────────┘      └───────────────────┘                   │    │
+│  └─────────────────────────────────────────────────────────────────────┘    │
+│                                                                             │
+│         Metrics Collection (CPU, Memory, Bandwidth)                         │
+│                                 │                                            │
+│         Offloading Decisions (Edge assignment)                              │
+│                                 │                                            │
+└─────────────────────────────────┼───────────────────────────────────────────┘
+                                  │
+                                  ▼
+┌─────────────────────────────────────────────────────────────────────────────┐
+│                            EDGE LAYER                                        │
+│                    (19 VMs - Heterogeneous Resources)                        │
+│                                                                             │
+│  ┌─────────────────────────────────────────────────────────────────────┐    │
+│  │  HIGH-CAPACITY EDGES (4 VMs: 8-9GB RAM, 8 cores)                    │    │
+│  │  ┌────────┐  ┌────────┐  ┌────────┐  ┌────────┐                     │    │
+│  │  │ Edge E1│  │ Edge E2│  │ Edge E3│  │ Edge E4│                     │    │
+│  │  │ FL     │  │ FL     │  │ FL     │  │ FL     │                     │    │
+│  │  │ Client │  │ Client │  │ Client │  │ Client │                     │    │
+│  │  └────┬───┘  └────┬───┘  └────┬───┘  └────┬───┘                     │    │
+│  └───────┼───────────┼───────────┼───────────┼─────────────────────────┘    │
+│          │           │           │           │                              │
+│  ┌───────┼───────────┼───────────┼───────────┼─────────────────────────┐    │
+│  │  MID-TIER EDGES (5 VMs: 7GB RAM, 8 cores)                           │    │
+│  │  ┌────────┐  ┌────────┐  ┌────────┐  ┌────────┐  ┌────────┐         │    │
+│  │  │ Edge E5│  │ Edge E6│  │ Edge E7│  │ Edge E8│  │ Edge E9│         │    │
+│  │  │ FL     │  │ FL     │  │ FL     │  │ FL     │  │ FL     │         │    │
+│  │  │ Client │  │ Client │  │ Client │  │ Client │  │ Client │         │    │
+│  │  └────┬───┘  └────┬───┘  └────┬───┘  └────┬───┘  └────┬───┘         │    │
+│  └───────┼───────────┼───────────┼───────────┼───────────┼─────────────┘    │
+│          │           │           │           │           │                  │
+│  ┌───────┼───────────┼───────────┼───────────┼───────────┼─────────────┐    │
+│  │  RESOURCE-CONSTRAINED EDGES (10 VMs: 4-6GB RAM, 4 cores)            │    │
+│  │  ┌────────┐  ┌────────┐  ┌────────┐  ┌────────┐  ┌────────┐         │    │
+│  │  │Edge E10│  │Edge E11│  │Edge E12│  │Edge E13│  │Edge E14│  ...    │    │
+│  │  │ FL     │  │ FL     │  │ FL     │  │ FL     │  │ FL     │         │    │
+│  │  │ Client │  │ Client │  │ Client │  │ Client │  │ Client │         │    │
+│  │  └────────┘  └────────┘  └────────┘  └────────┘  └────────┘         │    │
+│  └─────────────────────────────────────────────────────────────────────┘    │
+│                                                                             │
+│  Each Edge VM runs:                                                         │
+│  - Flask metrics endpoint (port 8000) for CPU/Memory/Bandwidth              │
+│  - Socket server (port 5001) for device communication                       │
+│  - Local FL training with FedProx                                           │
+│                                                                             │
+└─────────────────────────────────────────────────────────────────────────────┘
 
 ---
 
