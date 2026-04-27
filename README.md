@@ -70,14 +70,21 @@ Total: 20 VMs (19 edge servers + 1 cloud controller), connected over 5G/WiFi.
 
 ### Software Stack
 
-| Component      | Technology       |
-|----------------|------------------|
-| Language       | Python 3.8       |
-| DRL Framework  | Custom DDQN      |
-| Optimization   | ILP Solver       |
-| FL Aggregation | FedProx          |
-| Local Model    | CNN (TensorFlow) |
-| Dataset        | Fashion-MNIST    |
+| Category | Technology | Purpose |
+|----------|------------|---------|
+| Language | Python 3.8 | Core implementation |
+| Deep Reinforcement Learning | PyTorch | DDQN neural network (57→64→32→19) |
+| Mathematical Optimization | PuLP (ILP Solver) | Constraint satisfaction (CPU ≤90%, MEM ≤85%) |
+| Federated Learning | FedProx | Non-IID data handling with μ=0.1 |
+| Local Model | CNN (PyTorch) | Fashion-MNIST classification (2 conv + 2 FC layers) |
+| Web Framework | Flask | Metrics endpoint (/metrics on port 8000) |
+| System Metrics | psutil | CPU%, memory%, network bandwidth |
+| Communication | TCP Sockets | Cloud (port 5000), Edges (port 5001) |
+| Serialization | Pickle | Message encoding with length prefix |
+| Concurrency | Python Threading | Handle multiple device connections |
+| Dataset | Fashion-MNIST | 10 classes, 70k images, non-IID split |
+| Testbed | Ubuntu 20.04 VMs | 20 VMs (1 cloud + 19 edges) |
+| Network | 5G / WiFi | Physical wireless connectivity |
 
 ---
 
